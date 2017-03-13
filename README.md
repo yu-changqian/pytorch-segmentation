@@ -1,2 +1,5 @@
 # Pytorch for Semantic Segmentation
-Here I will reimplement most exiting networks and some experimental networks for semantic segmentation.
+A repository containing some exiting networks and some experimental networks for semantic segmentation.
++ ResNet(FCN)
++ DenseNet(FCN)
++ Wide-ResNet(FCN)
