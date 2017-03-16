@@ -34,7 +34,7 @@ for epoch in range(80):
 
         if (i+1) % 100 == 0:
             print("Epoch [%d/%d] Iter [%d/%d] Loss: %.4f" % (epoch+1, 80,
-                    i+1, 30, loss.data[0]))
+                    i+1, 2000, loss.data[0]))
 
     if (epoch+1) % 20 == 0:
         lr /= 3

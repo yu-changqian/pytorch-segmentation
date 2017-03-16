@@ -24,12 +24,12 @@ def CrossEntropy2d(input, target, weight=None, size_average=False):
     n, c, h, w = input.size()
 
     input = input.transpose(1, 2).transpose(2, 3).contiguous()
+    print(input.size())
+    print(target.view(n, h, w, 1).repeat(1, 1, 1, c).size())
     input = input[target.view(n, h, w, 1).repeat(1, 1, 1, c) >= 0].view(-1, c)
 
     target_mask = target >= 0
     target = target[target_mask]
-    print(F.log_softmax(input).size())
-    print(target.size())
     #loss = F.nll_loss(F.log_softmax(input), target, weight=weight, size_average=False)
     loss = F.cross_entropy(input, target, weight=weight, size_average=False)
     if size_average:
