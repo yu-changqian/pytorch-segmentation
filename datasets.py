@@ -40,15 +40,15 @@ class VOCDataSet(data.Dataset):
 
         img_file = datafiles["img"]
         img = Image.open(img_file)
-        img = img.resize((224, 224), Image.NEAREST)
+        img = img.resize((256, 256), Image.NEAREST)
         img = np.array(img, dtype=np.uint8)
 
         label_file = datafiles["label"]
         label = Image.open(label_file)
         # label image has categorical value, not continuous, so we have to
         # use NEAREST not BILINEAR
-        label = label.resize((224, 224), Image.NEAREST)
-        label = np.array(img, dtype=np.int32)
+        label = label.resize((256, 256), Image.NEAREST)
+        label = np.array(label, dtype=np.int32)
         label[label == 255] = -1
 
         if self.is_transform:
