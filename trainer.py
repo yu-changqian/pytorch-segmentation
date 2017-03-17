@@ -6,21 +6,22 @@ from datasets import VOCDataSet
 from loss import CrossEntropy2d
 
 
-trainloader = data.DataLoader(VOCDataSet("./data", is_transform=True), batch_size=4,
-                                num_workers=8, pin_memory=True)
+trainloader = data.DataLoader(VOCDataSet("./data", is_transform=True), batch_size=16,
+                                num_workers=8)
 
 model = ResNet50()
 if torch.cuda.is_available():
     model.cuda(0)
 
-lr = 0.001
+
+lr = 0.0001
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 for epoch in range(80):
     for i, (images, labels) in enumerate(trainloader):
         if torch.cuda.is_available():
             images = Variable(images.cuda(0))
-            labels = Variable(images.cuda(0))
+            labels = Variable(labels.cuda(0))
         else:
             images = Variable(images)
             labels = Variable(labels)
