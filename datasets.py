@@ -48,8 +48,8 @@ class VOCDataSet(data.Dataset):
         # label image has categorical value, not continuous, so we have to
         # use NEAREST not BILINEAR
         label = label.resize((256, 256), Image.NEAREST)
-        label = np.array(label, dtype=np.int32)
-        label[label == 255] = -1
+        label = np.array(label, dtype=np.uint8)
+        label[label == 255] = 21
 
         if self.is_transform:
             img, label = self.transform(img, label)
