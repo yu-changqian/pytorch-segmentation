@@ -123,7 +123,6 @@ class ResNet(nn.Module):
 
         self.conv1_1 = nn.ConvTranspose2d(64, n_classes, kernel_size=1, stride=1,
                                  bias=False)
-        self.pw = Pairwise(neighbors=8, num_classes=n_classes)
 
     def _make_downlayer(self, block, init_channels, num_layer, stride=1):
         downsample = None
@@ -178,8 +177,6 @@ class ResNet(nn.Module):
         x = self.uplayer_top(x)
 
         x = self.conv1_1(x, output_size=img.size())
-        pairwise = self.pw(x)
-        x += pairwise
 
         return x
 

@@ -1,82 +1,99 @@
+from __future__ import division
 import torch
 from torch.autograd import Variable
 from torch.utils import data
-from resnet import ResNet50
+# from resnet import FCN
+from upsample import FCN
+# from gcn import FCN
 from datasets import VOCDataSet
 from loss import CrossEntropy2d, CrossEntropyLoss2d
 from visualize import LinePlotter
+from transform import ReLabel, ToLabel, ToSP, Scale
+from torchvision.transforms import Compose, CenterCrop, Normalize, ToTensor
 import tqdm
+from PIL import Image
+import numpy as np
 
+input_transform = Compose([
+    Scale((256, 256), Image.BILINEAR),
+    ToTensor(),
+    Normalize([.485, .456, .406], [.229, .224, .225]),
 
-trainloader = data.DataLoader(VOCDataSet("./data", is_transform=True), batch_size=16,
-                                num_workers=8)
+])
+target_transform = Compose([
+    Scale((256, 256), Image.NEAREST),
+    ToSP(256),
+    ToLabel(),
+    ReLabel(255, 21),
+])
 
-model = ResNet50()
-# model = torch.nn.DataParallel(ResNet50(), device_ids=[0, 1])
+trainloader = data.DataLoader(VOCDataSet("./data", img_transform=input_transform,
+                                         label_transform=target_transform),
+                              batch_size=16, shuffle=True, pin_memory=True)
+
 if torch.cuda.is_available():
-    model.cuda(0)
+    model = torch.nn.DataParallel(FCN(22))
+    model.cuda()
 
-<<<<<<< HEAD
-epoches = 100
-lr = 0.1
-weight_decay = 0.0001
+epoches = 80
+lr = 1e-4
+weight_decay = 2e-5
 momentum = 0.9
 weight = torch.ones(22)
 weight[21] = 0
+max_iters = 92*epoches
 
-criterion = CrossEntropyLoss2d(weight)
+criterion = CrossEntropyLoss2d(weight.cuda())
 optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum,
                             weight_decay=weight_decay)
 ploter = LinePlotter()
 
+model.train()
 for epoch in range(epoches):
     running_loss = 0.0
-    for i, (images, labels) in tqdm.tqdm(enumerate(trainloader)):
-        print(i)
-=======
-
-lr = 0.0001
-optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-
-for epoch in range(80):
-    for i, (images, labels) in enumerate(trainloader):
->>>>>>> e3228cb83e412d884cf803a4adb6071ef483898b
+    for i, (images, labels_group) in tqdm.tqdm(enumerate(trainloader)):
         if torch.cuda.is_available():
-            images = Variable(images.cuda(0))
-            labels = Variable(labels.cuda(0))
+            images = [Variable(image.cuda()) for image in images]
+            labels_group = [labels for labels in labels_group]
         else:
-            images = Variable(images)
-            labels = Variable(labels)
+            images = [Variable(image) for image in images]
+            labels_group = [labels for labels in labels_group]
 
         optimizer.zero_grad()
-        outputs = model(images)
-<<<<<<< HEAD
-        loss = criterion(outputs, labels)
-=======
-        loss = CrossEntropy2d(outputs, labels, size_average=True)
->>>>>>> e3228cb83e412d884cf803a4adb6071ef483898b
-        loss /= len(images)
+        losses = []
+        for img, labels in zip(images, labels_group):
+            outputs = model(img)
+            labels = [Variable(label.cuda()) for label in labels]
+            for pair in zip(outputs, labels):
+                losses.append(criterion(pair[0], pair[1]))
+
+        if epoch < 40:
+            loss_weight = [0.1, 0.1, 0.1, 0.1, 0.1, 0.5]
+        else:
+            loss_weight = [0.5, 0.1, 0.1, 0.1, 0.1, 0.1]
+
+        loss = 0
+        for w, l in zip(loss_weight, losses):
+            loss += w*l
+
         loss.backward()
         optimizer.step()
-
-<<<<<<< HEAD
         running_loss += loss.data[0]
-        if (i+1) % 100 == 0:
-            print("Epoch [%d/%d] Iter [%d/%d] Loss: %.4f" % (epoch+1, 80,
-                  i+1, 2000, loss.data[0]))
-            ploter.plot("loss", "train", (i/100, running_loss/100))
-            running_loss = 0
 
-    if (epoch+1) % 30 == 0:
+        # lr = lr * (1-(92*epoch+i)/max_iters)**0.9
+        # for parameters in optimizer.param_groups:
+        #     parameters['lr'] = lr
+
+    print("Epoch [%d] Loss: %.4f" % (epoch+1, running_loss/i))
+    ploter.plot("loss", "train", epoch+1, running_loss/i)
+    running_loss = 0
+
+    if (epoch+1) % 20 == 0:
         lr /= 10
         optimizer = torch.optim.SGD(model.parameters(), lr=lr,
                                     momentum=momentum,
                                     weight_decay=weight_decay)
-=======
-        if (i+1) % 20 == 0:
-            print("Epoch [%d/%d] Iter [%d/%d] Loss: %.4f" % (epoch+1, 80,
-                    i+1, 3000, loss.data[0]))
->>>>>>> e3228cb83e412d884cf803a4adb6071ef483898b
+        torch.save(model.state_dict(), "./pth/fcn-deconv-%d.pth" % (epoch+1))
 
 
-torch.save(model, "resnet50.pkl")
+torch.save(model.state_dict(), "./pth/fcn-deconv.pth")
